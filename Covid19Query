@@ -1,0 +1,158 @@
+select
+*
+from
+`projectyoutube-373910.PortfolioProject.covid_deaths`
+
+--Looking at Total Cases Vs Total Deaths
+--Shows likelihood of dying if you contract covid in your country
+SELECT  
+location, date, total_cases, total_deaths,(total_deaths/total_cases)*100 as DeathPercentage
+FROM 
+`projectyoutube-373910.PortfolioProject.covid_deaths`
+where
+location like 'Thailand'
+order by
+1,2
+
+--Looking at the Total cases vs Population
+--Shows percentage of population got Covid
+select
+location, date, total_cases, population, (total_cases/population)*100 as PercentPopulationInfected
+from 
+`projectyoutube-373910.PortfolioProject.covid_deaths`
+where
+location like 'Thailand'
+order by
+1,2
+
+--Looking at country with Higest Infection Rate compared to population
+select
+location, population, max(total_cases) as HighestInfectionCount, max(total_cases/population)*100 as PercentPopulationInfected
+from 
+`projectyoutube-373910.PortfolioProject.covid_deaths`
+group by
+population, location
+order by
+4 Desc
+
+--Showing countries with highest deathcount per population
+select
+location, max(total_deaths) as TotalDeathCount
+from 
+`projectyoutube-373910.PortfolioProject.covid_deaths`
+where
+continent is not null
+group by
+location
+order by
+2 Desc
+
+--Break information down by income
+select
+location, max(total_deaths) as TotalDeathCount
+from 
+`projectyoutube-373910.PortfolioProject.covid_deaths`
+where
+continent is null and 
+location like 'High income' or
+location like 'Upper middle income' or
+location like 'Lower middle income' or
+location like 'Low income'
+group by
+location
+order by
+2 Desc
+
+--Showing continents with the highest death count
+select
+continent, max(total_deaths) as TotalDeathCount
+from 
+`projectyoutube-373910.PortfolioProject.covid_deaths`
+where
+continent is not null 
+group by
+continent
+order by
+2 Desc
+
+--Global Numbers Trend
+select
+date, sum(new_cases) as TotalCases, sum(new_deaths) as TotalDeaths , sum(new_deaths)/sum(new_cases) * 100 as TotalDeathPercentage
+from
+`projectyoutube-373910.PortfolioProject.covid_deaths`
+where
+continent is not null
+group by
+date
+order by
+1
+
+
+
+---Join table
+---Looking at Total pop vs Vaccinations
+-- USE CTE
+With `PopvsVac` as
+(
+select
+dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+,sum(vac.new_vaccinations) OVER (Partition by dea.location Order by dea.location, dea.date) as RollingPeopleVaccinated
+from
+`projectyoutube-373910.PortfolioProject.covid_deaths` as dea
+join
+`projectyoutube-373910.PortfolioProject.covid_vac` as vac
+on dea.location = vac.location and
+   dea.date = vac.date
+where
+dea.continent is not null
+order by
+2, 3
+)
+select
+*, (RollingPeopleVaccinated/population) * 100
+from
+PopVsVac
+
+
+
+
+-- Create temporary table 
+`PercentPopulationVaccinated`
+(
+  Continent nvarchar(255),
+  Location nvarchar(255),
+  Date datetime,
+  Population numeric,
+  RollingPeopleVaccinated numeric
+)
+as
+select
+dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+,sum(vac.new_vaccinations) OVER (Partition by dea.location Order by dea.location, dea.date) as RollingPeopleVaccinated
+from
+`projectyoutube-373910.PortfolioProject.covid_deaths` as dea
+join
+`projectyoutube-373910.PortfolioProject.covid_vac` as vac
+on dea.location = vac.location and
+   dea.date = vac.date
+where
+dea.continent is not null
+select
+*, (RollingPeopleVaccinated/population) * 100
+from
+PercentPopulationVaccinated
+
+
+--Creating view to store data for later viz
+Create View `PortfolioProject.Test` as
+select
+dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+,sum(vac.new_vaccinations) OVER (Partition by dea.location Order by dea.location, dea.date) as RollingPeopleVaccinated
+from
+`projectyoutube-373910.PortfolioProject.covid_deaths` as dea
+join
+`projectyoutube-373910.PortfolioProject.covid_vac` as vac
+on dea.location = vac.location and
+   dea.date = vac.date
+where
+dea.continent is not null
